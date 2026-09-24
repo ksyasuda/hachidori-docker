@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dictionary library · Hachidori</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <a class="wordmark" href="/">Hachidori<span>DICTIONARY HOST</span></a
+        ><span id="connection" class="connection">Connecting</span>
+      </header>
+      <main>
+        <section class="intro">
+          <p class="eyebrow">YOUR SHARED COLLECTION</p>
+          <h1>A home for<br />your dictionaries<span>.</span></h1>
+          <p>
+            Import once. Look up anywhere. Your library stays available with
+            the browser closed.
+          </p>
+        </section>
+        <div id="error" class="error" role="alert" hidden></div>
+        <section class="import-panel" aria-labelledby="upload-title">
+          <h2 id="upload-title" class="visually-hidden">Add to the library</h2>
+          <div id="drop-zone" class="drop-zone">
+            <span class="upload-symbol" aria-hidden="true">辞書</span>
+            <p class="drop-title">Drop dictionary ZIPs here</p>
+            <p class="drop-subtitle">
+              Yomitan format · Up to 512 MiB each · One import at a time
+            </p>
+            <button id="choose" type="button" class="primary">
+              Choose ZIP files
+            </button>
+            <input
+              id="files"
+              type="file"
+              accept=".zip,application/zip"
+              multiple
+              hidden
+            />
+          </div>
+          <div class="import-options">
+            <label class="replace"
+              ><input id="replace" type="checkbox" /> Replace installed
+              dictionaries</label
+            >
+            <span class="hint"
+              >Off by default. Replacement can overwrite an existing version,
+              including with an older one.</span
+            >
+          </div>
+          <div class="settings-row">
+            <div>
+              <p class="settings-title">Hachidori settings</p>
+              <span id="settings-status" class="hint"
+                >Apply reader settings from a backup ZIP exported by Hachidori
+                Settings. Dictionaries and personal entries stay as they
+                are.</span
+              >
+            </div>
+            <button id="import-settings" type="button" class="secondary">
+              Import settings
+            </button>
+            <input
+              id="settings-file"
+              type="file"
+              accept=".zip,application/zip"
+              hidden
+            />
+          </div>
+          <div
+            id="upload-status"
+            class="upload-status"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <p id="upload-message"></p>
+            <progress
+              id="progress"
+              max="100"
+              value="0"
+              aria-label="Upload progress"
+            ></progress>
+          </div>
+        </section>
+        <section class="library" aria-labelledby="library-title">
+          <div class="section-title">
+            <h2 id="library-title">
+              Installed dictionaries <span id="count" class="count">0</span>
+            </h2>
+            <div class="library-tools">
+              <label class="schedule"
+                >Auto-update
+                <select id="schedule" disabled>
+                  <option value="off">Off</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select></label
+              >
+              <button id="check-updates" type="button" class="secondary">
+                Check for updates
+              </button>
+            </div>
+          </div>
+          <p id="active" class="library-status" role="status">
+            Available to linked clients
+          </p>
+          <progress
+            id="update-progress"
+            class="update-progress"
+            max="100"
+            aria-label="Update progress"
+            hidden
+          ></progress>
+          <div id="empty" class="empty">
+            <span aria-hidden="true">空</span>
+            <div>
+              <h3>Your collection starts here.</h3>
+              <p>Drop a Yomitan ZIP above or choose one to import.</p>
+            </div>
+          </div>
+          <div id="table-wrap" class="table-wrap" hidden>
+            <table>
+              <thead>
+                <tr>
+                  <th>Dictionary</th>
+                  <th>Contents</th>
+                  <th>Status</th>
+                  <th><span class="visually-hidden">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody id="dictionaries"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <span>Hachidori · Personal dictionary host</span
+        ><span>Keep this page open until uploads finish.</span>
+      </footer>
+    </div>
+  </body>
+</html>

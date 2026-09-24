@@ -1,0 +1,22 @@
+{
+  "name": "hachidori-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "setup": "python3 scripts/fetch-upstream.py",
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:docker": "node test/container.mjs",
+    "import": "node scripts/import.mjs"
+  },
+  "dependencies": {
+    "css.escape": "1.5.1",
+    "jsdom": "29.0.0",
+    "ws": "8.21.3"
+  }
+}

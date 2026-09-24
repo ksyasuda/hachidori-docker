@@ -1,0 +1,35 @@
+name: hachidori-docker
+services:
+  host:
+    build: .
+    image: hachidori-docker:local
+    container_name: hachidori-docker
+    init: true
+    restart: unless-stopped
+    # Host networking: AnkiConnect on this machine is reachable at its default
+    # loopback address with no add-on changes, and the listeners below bind
+    # directly on the host's interfaces at the configured ports.
+    network_mode: host
+    environment:
+      IMPORT_DIR: "${IMPORT_DIR-/imports}"
+      ADMIN_PORT: "${ADMIN_PORT:-8780}"
+      RELAY_PORT: "${RELAY_PORT:-8771}"
+      API_PORT: "${API_PORT:-19633}"
+      # The management page and API bind here. 0.0.0.0 serves them on every
+      # interface (LAN, Tailscale) by IP, machine name or MagicDNS name; other
+      # hostnames such as a reverse proxy domain must be listed in ADMIN_HOSTS.
+      # There is no authentication: set 127.0.0.1 to keep them on this machine.
+      LISTEN_ADDRESS: "${ADMIN_BIND_ADDRESS:-0.0.0.0}"
+      ADMIN_HOSTS: "${ADMIN_HOSTS:-}"
+      # true: the relay and Yomitan API listen on every interface so other
+      # computers can link over the LAN or Tailscale. false: loopback only.
+      RELAY_NETWORK: "${RELAY_NETWORK:-true}"
+    volumes:
+      - ./dictionaries:/data
+      - ${IMPORTS_PATH:-./imports}:/imports:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 30s

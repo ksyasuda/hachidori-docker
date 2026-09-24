@@ -1,0 +1,20 @@
+Hachidori Docker is an independent deployment adapter, not an official Hachidori release.
+
+Hachidori and its bundled Hoshidicts WebAssembly engine:
+https://github.com/bee-san/hachidori
+Pinned commit: 4be36f5e87ab946574d6c0279c6e7dd6fee36c45
+License: GPL-3.0-or-later. Original notices remain in .upstream/hachidori.
+
+Hachidori Relay for Anki, run here without Anki:
+https://github.com/bee-san/hachidori-anki
+Pinned revision: 7766079159a2a76a20a3fd4eb756e1ffe5752c5c (v0.0.4)
+License: GPL-3.0-or-later. Original notices remain in .upstream/hachidori-anki.
+
+No upstream source is patched. fetch-upstream.py verifies source archive hashes.
+The Docker image includes the fetched source and notices, including the engine's
+source files and submodule references. The upstream release also publishes a
+complete source archive containing the native dependencies needed to rebuild WASM.
+For redistribution of the bundled engine, provide its corresponding complete
+source from the matching upstream release or pinned submodules under the GPL.
+
+This project's adapters are licensed GPL-3.0-or-later.

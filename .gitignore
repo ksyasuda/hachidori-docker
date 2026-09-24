@@ -1,0 +1,7 @@
+node_modules/
+.upstream/
+data/
+.env
+imports/*
+!imports/.gitkeep
+dictionaries/
