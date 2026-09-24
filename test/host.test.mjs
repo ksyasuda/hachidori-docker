@@ -13,7 +13,7 @@ import path from "node:path";
 import net from "node:net";
 import http from "node:http";
 import https from "node:https";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { setTimeout as sleep } from "node:timers/promises";
 import WebSocket from "ws";
@@ -62,6 +62,19 @@ test(
     );
     const importDirectory = path.join(directory, "imports");
     await mkdir(importDirectory);
+    // Throwaway self-signed CA for the update test's local HTTPS source.
+    const tlsDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "hachidori-host-tls-"),
+    );
+    const tlsKey = path.join(tlsDirectory, "key.pem");
+    const tlsCert = path.join(tlsDirectory, "cert.pem");
+    execFileSync("openssl", [
+      "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+      "-nodes", "-days", "1", "-subj", "/CN=127.0.0.1",
+      "-addext", "subjectAltName=IP:127.0.0.1",
+      "-addext", "basicConstraints=critical,CA:TRUE",
+      "-keyout", tlsKey, "-out", tlsCert,
+    ], { stdio: "ignore" });
     const admin = await freePort(),
       relay = await freePort(),
       api = await freePort();
@@ -81,7 +94,7 @@ test(
           API_PORT: String(api),
           RELAY_NETWORK: "false",
           // The update test serves its index and archive over local HTTPS.
-          NODE_EXTRA_CA_CERTS: path.resolve("test/fixtures/localhost.pem"),
+          NODE_EXTRA_CA_CERTS: tlsCert,
         },
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -787,8 +800,8 @@ test(
         let revision = "1";
         const source = https.createServer(
           {
-            key: await readFile("test/fixtures/localhost-key.pem"),
-            cert: await readFile("test/fixtures/localhost.pem"),
+            key: await readFile(tlsKey),
+            cert: await readFile(tlsCert),
           },
           (request, response) => {
             if (request.url === "/index.json") {

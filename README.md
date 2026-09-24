@@ -282,6 +282,7 @@ address, firewall these ports or set `ADMIN_BIND_ADDRESS=127.0.0.1` and
 ## Development
 
 Requires Node 24+, Python 3.11+ and Linux `flock`, which guards the data folder.
+`npm test` also needs `openssl` to generate a throwaway TLS certificate.
 
 ```sh
 npm ci
