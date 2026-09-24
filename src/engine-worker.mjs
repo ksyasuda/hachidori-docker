@@ -297,7 +297,7 @@ async function dispatch(message) {
       return store.statistics(message);
   }
   throw new Error(
-    `Unsupported operation: ${message.target}/${message.type}. This server hosts dictionaries; host-owned mining and automatic updates are unavailable.`,
+    `Unsupported operation: ${message.target}/${message.type}.`,
   );
 }
 

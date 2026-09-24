@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 const files = process.argv.slice(2);
 if (!files.length) throw new Error('Usage: npm run import -- /path/to/dictionary.zip [...]');
-const host = process.env.HOST_URL ?? 'http://127.0.0.1:8780';
+// Defaults to the management listener this process's environment configures,
+// which inside the container matches the running server.
+const bind = process.env.LISTEN_ADDRESS;
+const address = !bind || bind === '0.0.0.0' ? '127.0.0.1' : bind.includes(':') ? `[${bind}]` : bind;
+const host = process.env.HOST_URL ?? `http://${address}:${process.env.ADMIN_PORT ?? 8780}`;
 for (const file of files) {
   const url = new URL('/import', host);
   url.searchParams.set('name', path.basename(file));
