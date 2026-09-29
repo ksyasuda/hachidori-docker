@@ -33,6 +33,7 @@ import { assertBackupSnapshot } from "../.upstream/hachidori/extension/backup-st
 import { answerAnkiConnect } from "../.upstream/hachidori/test/anki-connect-fake.mjs";
 import { ankiMediaFilename } from "../.upstream/hachidori/extension/anki-resources.js";
 import "../.upstream/hachidori/extension/reader-options.js";
+import { createState } from "../src/state.mjs";
 
 async function freePort() {
   const server = net.createServer();
@@ -1052,3 +1053,25 @@ test(
     );
   },
 );
+
+test("drops reader options that Hachidori no longer has from saved state", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "hachidori-state-test-"));
+  const filename = path.join(directory, "state.json");
+  const written = await createState(directory, () => {}).options({
+    baseRevision: 0,
+    options: { popupWidthPx: 640 },
+  });
+  assert.equal(written.ok, true);
+  const saved = JSON.parse(await readFile(filename, "utf8"));
+  saved.options.mediaCapture = { enabled: true };
+  saved.options.experimental = { mediaMining: true };
+  await writeFile(filename, JSON.stringify(saved));
+
+  const store = createState(directory, () => {});
+  await store.validate();
+  const migrated = JSON.parse(await readFile(filename, "utf8")).options;
+  assert.equal(Object.hasOwn(migrated, "mediaCapture"), false);
+  assert.equal(Object.hasOwn(migrated.experimental, "mediaMining"), false);
+  assert.equal(migrated.popupWidthPx, 640);
+  assert.equal(migrated.revision, 1);
+});

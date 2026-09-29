@@ -31,6 +31,14 @@ export function createState(directory, changed) {
         || !values.options || !values.customDictionarySource || !values.lookupStats) {
       throw new Error('Invalid state.json; restore a backup instead of starting with an empty library.');
     }
+    // Settings saved by an older Hachidori may carry options it has since
+    // removed. Re-project them as the extension does its stored options.
+    const { revision, ...stored } = values.options;
+    const options = { ...globalThis.HDReaderOptions.projectStoredOptions(stored), revision };
+    if (JSON.stringify(options) !== JSON.stringify(values.options)) {
+      values = { ...values, options };
+      atomicWrite(filename, JSON.stringify(values));
+    }
   }
   function commit(patch) {
     const next = { ...values, ...patch };
