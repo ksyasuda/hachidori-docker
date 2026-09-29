@@ -11,7 +11,7 @@ import { assertBackupSnapshot } from '../.upstream/hachidori/extension/backup-st
 import { ankiIndexConfigurationChange } from '../.upstream/hachidori/extension/anki-index-cache.js';
 
 // Custom page scripts run only in a browser. Everything else, including Anki
-// and media capture settings, is shared state this host owns and uses.
+// settings, is shared state this host owns and uses.
 const HOST_OWNED_OPTIONS = new Set(['customJavaScript']);
 
 export function createState(directory, changed) {

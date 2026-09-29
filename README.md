@@ -62,8 +62,8 @@ until the update finishes, so retry them afterward.
 **Import settings** applies reader settings from a backup ZIP exported by
 Hachidori Settings. The host reads only the backup's manifest. It ignores the
 dictionary files inside, and leaves installed dictionaries, personal entries and
-lookup counts alone. Anki and media capture settings come across, including the
-AnkiConnect URL and API key. Custom page script settings do not. Linked clients
+lookup counts alone. Anki settings come across, including the AnkiConnect URL
+and API key. Custom page script settings do not. Linked clients
 get the new settings through the usual storage broadcast.
 
 ### Folder imports
@@ -207,8 +207,8 @@ Set the AnkiConnect URL, API key and Templates from any linked browser's
 Settings → Anki. The host stores them and mirrors them to every linked browser.
 Linked readers too old to speak `linked-anki-v2` can't edit Templates or custom
 buttons. The host fetches pronunciation from URL audio sources itself. For
-browser text-to-speech, screenshots and captured media clips, the reading browser
-records them and the host uploads them to Anki.
+browser text-to-speech and screenshots, the reading browser records them and the
+host uploads them to Anki.
 
 The container uses host networking, so it reaches AnkiConnect at the default
 `http://127.0.0.1:8765` with no add-on changes. You don't need a

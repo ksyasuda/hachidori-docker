@@ -63,7 +63,7 @@ const windowShim = { AbortSignal, URL, atob, FileReader: FileReaderShim, Audio: 
 
 // Host-owned Anki mining for linked browsers: the same worker service, gateway
 // and duplicate index the extension runs, wired to this host's store and
-// engine. The reading browser keeps screenshots and captured media and sends
+// engine. The reading browser keeps screenshots and recorded speech and sends
 // their bytes with the submission; this host talks to AnkiConnect.
 export function createAnkiHost({ store, engine, document, log }) {
   const gateway = createAnkiGateway();
@@ -71,13 +71,12 @@ export function createAnkiHost({ store, engine, document, log }) {
   // as the extension masks its own.
   const prefix = `linked:${randomUUID()}:`;
   const options = () => globalThis.HDReaderOptions.normaliseOptions(store.snapshot().options);
-  // Screenshots, browser speech and captured clips are produced by the reading
-  // browser and arrive with the submission; this host stores them in Anki.
+  // Screenshots and browser speech are produced by the reading browser and
+  // arrive with the submission; this host stores them in Anki.
   const readOptions = async () =>
     capabilityAnkiOptions(options(), {
       screenshot: true,
       browserSpeech: true,
-      mediaCapture: true,
     });
   const repository = createAudioRepository({ window: windowShim, fetch: globalThis.fetch });
   // Pronunciation from URL sources is fetched here. A text-to-speech source is
@@ -143,7 +142,6 @@ export function createAnkiHost({ store, engine, document, log }) {
     readDictionaries: async () => store.snapshot().dictionaryState.dictionaries,
     engine,
     offscreen,
-    capture: null,
     duplicateIndex: index,
   });
 

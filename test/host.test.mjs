@@ -535,30 +535,6 @@ test(
           assert.equal(notes.get(spoken.submitted.noteId).Back, `[sound:${wavName}]`);
           assert.ok(mediaFiles.has(wavName), "speech uploaded");
 
-          // Captured sentence audio encoded by the reader is uploaded by the host.
-          const captureKey = await configure("{capture-audio}", {
-            audioSources: [],
-            mediaCapture: { enabled: true },
-            experimental: { mediaMining: true, longKeyScan: false, mdxImport: false },
-          });
-          const clip = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(60, 2)]);
-          const captured = await submit(
-            {
-              ...request,
-              term: { ...request.term, expression: "食べる録" },
-              configKey: captureKey,
-              captureJobId: "job-1",
-              capturePin: {
-                token: "pin-1", captureSessionId: "session-1", sourceKind: "cue", sourceLabel: "Subtitle",
-                partial: false, readyAtMs: 1000, animationFilename: "hachidori-abc123.avif", audioFilename: "hachidori-abc123.wav",
-              },
-            },
-            { capture: { jobId: "job-1", warnings: [], assets: {
-              audio: { filename: "hachidori-abc123.wav", byteLength: clip.length, data: clip.toString("base64") },
-            } } },
-          );
-          assert.match(notes.get(captured.submitted.noteId).Back, /hachidori-abc123\.wav/);
-          assert.ok(mediaFiles.has("hachidori-abc123.wav"), "captured audio uploaded");
           const maturity = await client.forward({
             target: "hachidori-anki",
             type: "hd_anki_maturity",
