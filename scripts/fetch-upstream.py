@@ -7,8 +7,8 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1] / ".upstream"
 SOURCES = [
-    ("hachidori", "ed2f340196a601c8bf4e8ecebed9747f58c534fe", "2baa81bdb8756b28a9d1ab976ca20f0ec0670af730e58a849a074e2f66d24c11"),
-    ("hachidori-anki", "7766079159a2a76a20a3fd4eb756e1ffe5752c5c", "bb2adfbb84f1bad1b79c1f6d47b3e436d22371184c8d6df69079547b8d5fb8ad"),
+    ("hachidori", "e7d6c280c43e043f3903b83bc96cf9c35312cd3a", "640f581848aea844c223108e2a846cdac32d5057d20d972d6083f4418a849ccb"),
+    ("hachidori-anki", "beffaca1cab2584608a25c276d81b17b0f27088f", "f88a26430ac5ea92fdacfe452b1b895cd67a8b578e39577b096fd666bb4ba27c"),
 ]
 
 for repo, revision, checksum in SOURCES:

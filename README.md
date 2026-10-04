@@ -118,7 +118,7 @@ MDX/MDD dictionaries.
 | Interface         | Default address            | Use                                                                             |
 | ----------------- | -------------------------- | ------------------------------------------------------------------------------- |
 | Sharing WebSocket | `ws://127.0.0.1:8771/link` | Native Hachidori results, media, settings and storage broadcasts                |
-| Yomitan HTTP API  | `http://127.0.0.1:19633`   | `/termEntries`, `/kanjiEntries`, `/tokenize`, `/ankiFields`, dictionary exports |
+| Yomitan HTTP API  | `http://127.0.0.1:19633`   | `/termEntries`, `/kanjiEntries`, `/tokenize`, `/ankiFields`, `/ankiCardFormats`, dictionary exports |
 | Management        | `http://127.0.0.1:8780`    | Import page, health, state, imports, runtime requests                           |
 
 To use this library from an existing Hachidori install in Chrome, link it in
@@ -225,6 +225,7 @@ statistics, managed updates and Anki mining for linked browsers. The relay also
 serves dictionary downloads in Hachidori backup format, which you can restore
 through Hachidori's own backup UI. `/ankiFields` renders fields and dictionary
 media with jsdom in Node. The HTTP API doesn't return pronunciation audio.
+`POST /ankiCardFormats` returns the saved Anki Templates in Settings order.
 
 Advertised capabilities are `hoshidicts-api-v1`, `linked-anki-v1` and
 `linked-anki-v2`.

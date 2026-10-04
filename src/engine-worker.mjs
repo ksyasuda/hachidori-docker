@@ -79,6 +79,8 @@ const api = createApiHost({
   engine,
   readDictionaries: async () => store.snapshot().dictionaryState.dictionaries,
   readAudioSources: async () => [],
+  readAnkiTemplates: async () =>
+    globalThis.HDReaderOptions.normaliseOptions(store.snapshot().options).anki.templates,
   version: "0.1.5",
   render: async (message) => {
     if (message.type !== "hd_anki_fields")

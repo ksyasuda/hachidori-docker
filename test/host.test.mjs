@@ -469,6 +469,25 @@ test(
           client.link(`ws://127.0.0.1:${relay}/link`);
           await until(() => client.status().connected, "Client did not link");
           const configKey = await configure("{glossary}");
+          const formatsResponse = await fetch(`${apiBase}/ankiCardFormats`, {
+            method: "POST",
+            body: JSON.stringify({ profileIndex: 0 }),
+          });
+          assert.equal(formatsResponse.status, 200);
+          assert.deepEqual(
+            await formatsResponse.json(),
+            written.options.anki.templates.map((template) => ({
+              name: template.name,
+              icon: "big-circle",
+              deck: "Default",
+              model: "Basic",
+              fields: {
+                Front: { value: "{expression}", overwriteMode: "overwrite" },
+                Back: { value: "{glossary}", overwriteMode: "overwrite" },
+              },
+              type: "term",
+            })),
+          );
           const discovered = await client.forward({
             target: "hoshidicts-worker",
             type: "hd_anki_discover",
