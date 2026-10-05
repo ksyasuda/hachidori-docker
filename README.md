@@ -36,6 +36,12 @@ check **Replace installed dictionaries** before uploading. Replacement follows
 upstream import rules and can downgrade the installed version, so only check it
 for archives you mean to replace.
 
+Linked Hachidori 0.2.3 or later, and apps driving one such as SubMiner, can also
+send a ZIP over the link: Settings on the linked browser shows the drop zone again.
+These uploads replace a dictionary with the same title or update source, or
+install a separate numbered copy when the sender asks for one, and wait while
+another import holds the host.
+
 Each installed dictionary has a **Remove** button. Removal goes through the
 engine, which deletes the dictionary's files and updates shared state in one
 step. Linked clients see the change.
@@ -227,8 +233,8 @@ through Hachidori's own backup UI. `/ankiFields` renders fields and dictionary
 media with jsdom in Node. The HTTP API doesn't return pronunciation audio.
 `POST /ankiCardFormats` returns the saved Anki Templates in Settings order.
 
-Advertised capabilities are `hoshidicts-api-v1`, `linked-anki-v1` and
-`linked-anki-v2`.
+Advertised capabilities are `hoshidicts-api-v1`, `linked-anki-v1`,
+`linked-anki-v2` and `linked-import-v1`.
 
 The browser's recommended-install flow isn't supported. Linked Settings pages can
 still open it, since the host answers a status check with an idle snapshot, but

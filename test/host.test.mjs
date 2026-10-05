@@ -24,6 +24,7 @@ import {
   MEDIA_PATH,
 } from "../.upstream/hachidori/test/make-fixture.mjs";
 import { createSharingClient } from "../.upstream/hachidori/extension/sharing-client.js";
+import { uploadDictionary } from "../.upstream/hachidori/extension/linked-import.js";
 import { createRecommendedInstallClient } from "../.upstream/hachidori/extension/recommended-install-client.js";
 import {
   createBackupArchive,
@@ -688,6 +689,91 @@ test(
         "Manual scan did not finish",
       );
     };
+    await t.test(
+      "a linked client installs, replaces and copies ZIPs over the link and recommits while the slot is busy",
+      async () => {
+        class Socket extends WebSocket {
+          constructor(url) {
+            super(url, { origin: "hoshi://hoshidicts" });
+            this.on("error", () => {});
+          }
+        }
+        const client = createSharingClient({
+          WebSocket: Socket,
+          version: "0.2.3",
+          name: "SubMiner test",
+          capabilities: [],
+          applyBatch: async () => {},
+        });
+        const send = (type, fields) =>
+          client.forward(
+            { target: "hachidori-linked-import", type, ...fields },
+            { capability: "linked-import-v1" },
+          );
+        const upload = (archive, replace) =>
+          uploadDictionary({
+            blob: new Blob([archive]),
+            fileName: "characters.zip",
+            replace,
+            send,
+          });
+        const title = "Linked characters";
+        const installed = async () =>
+          (await (await fetch(`${base}/state`)).json()).dictionaryState.dictionaries.filter(
+            (d) => d.title.startsWith(title),
+          );
+        try {
+          client.link(`ws://127.0.0.1:${relay}/link`);
+          await until(() => client.status().connected, "Client did not link");
+          assert.equal(
+            client.status().host.capabilities.includes("linked-import-v1"),
+            true,
+          );
+          const first = await upload(buildTitledZip(title, { revision: "1" }), true);
+          assert.equal(first.report?.success, true, JSON.stringify(first));
+          assert.deepEqual((await installed()).map((d) => d.revision), ["1"]);
+          await upload(buildTitledZip(title, { revision: "2" }), true);
+          assert.deepEqual((await installed()).map((d) => d.revision), ["2"]);
+          await upload(buildTitledZip(title, { revision: "3" }), false);
+          assert.equal((await installed()).length, 2);
+
+          // A management upload still receiving its body holds the import slot.
+          const blocker = http.request(`${base}/import?name=slow.zip`, {
+            method: "POST",
+            headers: { Origin: base },
+          });
+          const blocked = once(blocker, "response");
+          blocker.write(Buffer.from("PK"));
+          await until(
+            async () => (await (await fetch(`${base}/imports`)).json()).active,
+            "Blocking upload did not take the slot",
+          );
+          const archive = buildTitledZip("Linked while busy");
+          const { token } = await send("hd_import_begin", {
+            fileName: "busy.zip",
+            size: archive.length,
+            replace: true,
+          });
+          await send("hd_import_chunk", {
+            token,
+            offset: 0,
+            data: Buffer.from(archive).toString("base64"),
+          });
+          const busy = await send("hd_import_commit", { token });
+          assert.equal(busy.errorCode, "engine-mutating", JSON.stringify(busy));
+          blocker.end();
+          await blocked;
+          await until(
+            async () => !(await (await fetch(`${base}/imports`)).json()).active,
+            "Blocking upload did not release the slot",
+          );
+          const retried = await send("hd_import_commit", { token });
+          assert.equal(retried.report?.success, true, JSON.stringify(retried));
+        } finally {
+          client.unlink();
+        }
+      },
+    );
     await t.test(
       "leaves later ZIPs for a manual scan, skips installed identities and supports deliberate replacement",
       async () => {

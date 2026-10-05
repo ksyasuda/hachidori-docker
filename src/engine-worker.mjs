@@ -201,9 +201,11 @@ async function dispatch(message) {
       return { ok: true, ...(await updates.install(message)) };
   }
   if (message.type === "host_import") {
+    // The code tells linked uploads to keep their bytes and commit again.
     if (updates.busy())
-      throw new Error(
-        "Dictionary updates are running. Try again when they finish.",
+      throw Object.assign(
+        new Error("Dictionary updates are running. Try again when they finish."),
+        { errorCode: "engine-mutating" },
       );
     let importDecision;
     {
@@ -242,13 +244,13 @@ async function dispatch(message) {
             report: { success: true, title: identity.title },
             reason: `Already installed: ${matches[0].dictionary.title}. Use a replacement upload to change it.`,
           };
-        if (matches.length > 1)
+        if (matches.length > 1 && !message.separate)
           throw new Error(
             "Multiple installed dictionaries match this update source. Replacement is ambiguous.",
           );
         importDecision = matches.length
           ? {
-              action: "replace",
+              action: message.separate ? "separate" : "replace",
               identity,
               target: dictionaryImportTarget(matches[0].dictionary),
               matchKind: matches[0].kind,
@@ -324,6 +326,7 @@ async function respond(id, message) {
         requestId: message?.requestId ?? null,
         ok: false,
         error: error.message,
+        ...(error.errorCode ? { errorCode: error.errorCode } : {}),
       },
     });
   }

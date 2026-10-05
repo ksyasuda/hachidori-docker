@@ -11,8 +11,15 @@ import { createSharingHost } from "../.upstream/hachidori/extension/sharing-host
 import {
   API_CAPABILITY,
   LINKED_ANKI_CAPABILITY,
+  LINKED_IMPORT_CAPABILITY,
+  LINKED_IMPORT_TARGET,
   SHARING_CAPABILITIES,
+  allowLinkedImportRequest,
 } from "../.upstream/hachidori/extension/sharing-protocol.js";
+import {
+  ENGINE_BUSY_CODE,
+  createUploadHost,
+} from "../.upstream/hachidori/extension/linked-import.js";
 import { createImports, MAX_IMPORT_BYTES } from "./imports.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -46,6 +53,52 @@ const imports = createImports({
   ready: () => snapshot !== null && !stopping,
   dispatch: request,
 });
+// Linked browsers send dictionary ZIPs as chunked uploads (Hachidori 0.2.3+).
+// The bytes wait here per upload, and commit imports them through the shared
+// slot exactly like a management upload.
+const uploadParts = new Map();
+const uploads = createUploadHost({
+  store: {
+    append(token, data) {
+      const parts = uploadParts.get(token) ?? [];
+      parts.push(Buffer.from(data, "base64"));
+      uploadParts.set(token, parts);
+    },
+    discard(token) {
+      uploadParts.delete(token);
+    },
+  },
+  async importUpload(token, { fileName, replace }) {
+    // A busy slot keeps the upload, so the client commits the same token again.
+    if (imports.busy())
+      return {
+        ok: false,
+        error: "Another import is in progress.",
+        errorCode: ENGINE_BUSY_CODE,
+      };
+    return imports.run(
+      fileName,
+      "link",
+      async () => Buffer.concat(uploadParts.get(token) ?? []),
+      replace ? "replace" : "separate",
+    );
+  },
+});
+async function answerUpload(message, clientId) {
+  const upload = allowLinkedImportRequest(message);
+  switch (upload.type) {
+    case "hd_import_begin":
+      if (upload.size > MAX_IMPORT_BYTES)
+        throw new Error("ZIP exceeds the 512 MiB limit.");
+      return { ok: true, ...uploads.begin(upload, clientId) };
+    case "hd_import_chunk":
+      return { ok: true, ...(await uploads.chunk(upload, clientId)) };
+    case "hd_import_abort":
+      return { ok: true, ...uploads.abort(upload, clientId) };
+    default:
+      return uploads.commit(upload, clientId);
+  }
+}
 const allowedHosts = new Set([
   "localhost",
   ...(process.env.ADMIN_HOSTS ?? "")
@@ -143,6 +196,8 @@ const host = createSharingHost({
     )
       return { ok: false, error: LINKED_SETTINGS_UPDATE_REQUIRED };
     try {
+      if (message.target === LINKED_IMPORT_TARGET)
+        return await answerUpload(message, clientId);
       return await request(message);
     } catch (error) {
       return { ok: false, error: error.message };
@@ -155,7 +210,9 @@ const host = createSharingHost({
   sharedKey,
   version: "0.1.5",
   name: "Hachidori Docker host",
-  capabilities: [API_CAPABILITY, ...SHARING_CAPABILITIES],
+  capabilities: [API_CAPABILITY, ...SHARING_CAPABILITIES, LINKED_IMPORT_CAPABILITY],
+  clientClosed: (clientId) =>
+    uploads.dropWhere((owner) => owner === clientId),
 });
 function request(message) {
   if (stopping || snapshot === null)
@@ -281,6 +338,7 @@ const server = http.createServer(async (incoming, outgoing) => {
           "dictionary-sharing",
           API_CAPABILITY,
           ...SHARING_CAPABILITIES,
+          LINKED_IMPORT_CAPABILITY,
         ],
         mining: true,
       });
@@ -327,7 +385,7 @@ const server = http.createServer(async (incoming, outgoing) => {
         fileName,
         "upload",
         () => body(incoming, MAX_IMPORT_BYTES),
-        url.searchParams.get("replace") === "true",
+        url.searchParams.get("replace") === "true" ? "replace" : "skip",
       );
       return json(
         outgoing,

@@ -5,7 +5,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 export const MAX_IMPORT_BYTES = 512 * 1024 * 1024;
 
-// Both entry points share one slot, including the time spent receiving a ZIP.
+// Every entry point shares one slot, including the time spent receiving a ZIP.
+// `existing` says what to do when the ZIP's title or update source is installed:
+// "skip" it, "replace" that dictionary, or install a "separate" numbered copy.
 export function createImports({ directory, ready, dispatch }) {
   let active = null;
   let scanning = false;
@@ -17,7 +19,7 @@ export function createImports({ directory, ready, dispatch }) {
   const fingerprint = (stat) =>
     `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
 
-  async function run(fileName, source, read, replace = false) {
+  async function run(fileName, source, read, existing = "skip") {
     if (active)
       throw new Error(
         "Another import is in progress. Try again when it finishes.",
@@ -39,7 +41,8 @@ export function createImports({ directory, ready, dispatch }) {
         type: "host_import",
         fileName,
         bytes,
-        skipExisting: !replace,
+        skipExisting: existing === "skip",
+        separate: existing === "separate",
       });
       const success = result.ok && result.report?.success;
       entry = {

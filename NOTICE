@@ -2,7 +2,7 @@ Hachidori Docker is an independent deployment adapter, not an official Hachidori
 
 Hachidori and its bundled Hoshidicts WebAssembly engine:
 https://github.com/bee-san/hachidori
-Pinned commit: e7d6c280c43e043f3903b83bc96cf9c35312cd3a (0.2.2)
+Pinned commit: 991c48cd4c7ed65b946a4b42e7a5d7e5a770ddd1 (0.2.3)
 License: GPL-3.0-or-later. Original notices remain in .upstream/hachidori.
 
 Hachidori Relay for Anki, run here without Anki:
