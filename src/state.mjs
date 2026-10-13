@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { atomicWrite } from './disk.mjs';
 import '../.upstream/hachidori/extension/reader-options.js';
 import '../.upstream/hachidori/extension/dictionary-group-state.js';
+import '../.upstream/hachidori/extension/word-status-overrides.js';
 import { normaliseCustomDictionaryDocument, parseCustomDictionary, customDictionarySemanticRevision } from '../.upstream/hachidori/extension/custom-dictionary.js';
 import { emptyLookupStats, normaliseLookupTerm, lookupStatsKey, incrementLookupStats } from '../.upstream/hachidori/extension/lookup-stats.js';
 import { managedDictionaryMatches, normaliseUpdateSettings } from '../.upstream/hachidori/extension/managed-dictionary-source.js';
@@ -22,6 +23,7 @@ export function createState(directory, changed) {
     customDictionarySource: normaliseCustomDictionaryDocument(null),
     dictionaryUpdates: normaliseUpdateSettings(null),
     lookupStats: emptyLookupStats(),
+    wordStatusOverrides: globalThis.HDWordStatusOverrides.emptyWordStatusOverrides(),
   };
   if (fs.existsSync(filename)) {
     values = JSON.parse(fs.readFileSync(filename, 'utf8'));
@@ -35,8 +37,11 @@ export function createState(directory, changed) {
     // removed. Re-project them as the extension does its stored options.
     const { revision, ...stored } = values.options;
     const options = { ...globalThis.HDReaderOptions.projectStoredOptions(stored), revision };
-    if (JSON.stringify(options) !== JSON.stringify(values.options)) {
-      values = { ...values, options };
+    // Hachidori 0.3 added the words marked as known or ignored.
+    const wordStatusOverrides = globalThis.HDWordStatusOverrides.normaliseWordStatusOverrides(values.wordStatusOverrides);
+    if (JSON.stringify(options) !== JSON.stringify(values.options)
+        || JSON.stringify(wordStatusOverrides) !== JSON.stringify(values.wordStatusOverrides)) {
+      values = { ...values, options, wordStatusOverrides };
       atomicWrite(filename, JSON.stringify(values));
     }
   }
@@ -62,7 +67,8 @@ export function createState(directory, changed) {
   }
   function backup(state = values.dictionaryState) {
     return { state, options: values.options, document: values.customDictionarySource,
-      updates: normaliseUpdateSettings(values.dictionaryUpdates), lookupStats: values.lookupStats };
+      updates: normaliseUpdateSettings(values.dictionaryUpdates), lookupStats: values.lookupStats,
+      wordStatusOverrides: values.wordStatusOverrides };
   }
   // Shared Settings may change presentation and order, but may not invent paths,
   // replace engine-owned inventory, or bypass the engine's import/removal queues.
@@ -171,6 +177,16 @@ export function createState(directory, changed) {
       return options;
     });
   }
+  // Mark as known and Ignore: one headword set to known or ignored, or cleared
+  // with null. Writes change only that headword, so they need no base revision.
+  function wordStatusOverride(message) {
+    return locked(async () => {
+      const current = values.wordStatusOverrides;
+      const next = globalThis.HDWordStatusOverrides.withWordStatusOverride(current, message.headword, message.status);
+      if (next !== current) commit({ wordStatusOverrides: next });
+      return { ok: true, revision: next.revision };
+    });
+  }
   // The duplicate index's revisioned cache state, updated under the write lock.
   function updateAnkiIndex(update) {
     return locked(async () => {
@@ -195,7 +211,7 @@ export function createState(directory, changed) {
     }
     return { ok: true, descriptor, statistics: row ?? { ...term, lookupCount: 0 } };
   }
-  return { snapshot: () => structuredClone(values), bridge, options, importOptions, statistics, presentation,
+  return { snapshot: () => structuredClone(values), bridge, options, importOptions, statistics, presentation, wordStatusOverride,
     updatePlan, recordUpdateCheck, writeUpdateSettings, updateAnkiIndex,
     validate: () => assertBackupSnapshot(backup()) };
 }

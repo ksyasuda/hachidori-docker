@@ -338,6 +338,38 @@ test(
           });
           assert.equal(media.ok, true, JSON.stringify(media));
           assert.match(media.dataUrl, /^data:image\/png;base64,/);
+          const segmented = await client.forward({
+            target: "hoshidicts-offscreen",
+            type: "hd_segment",
+            chunks: [{ id: "p1", text: "食べたかった" }],
+          });
+          assert.equal(segmented.ok, true, JSON.stringify(segmented));
+          assert.equal(segmented.segments[0].id, "p1");
+          assert.ok(segmented.segments[0].spans.length > 0);
+          const marked = await client.forward({
+            target: "hoshidicts-worker",
+            type: "hd_word_status_override",
+            headword: "食べる",
+            status: "known",
+          });
+          assert.equal(marked.ok, true, JSON.stringify(marked));
+          await until(
+            () => mirrored.wordStatusOverrides?.known.includes("食べる"),
+            "Word status overrides were not broadcast",
+          );
+          const invalid = await client.forward({
+            target: "hoshidicts-worker",
+            type: "hd_word_status_override",
+            headword: "食べる",
+            status: "learning",
+          });
+          assert.equal(invalid.ok, false);
+          await client.forward({
+            target: "hoshidicts-worker",
+            type: "hd_word_status_override",
+            headword: "食べる",
+            status: null,
+          });
         } finally {
           client.unlink();
         }
@@ -404,12 +436,14 @@ test(
             this.on("error", () => {});
           }
         }
+        const wordStatusRevisions = [];
         const client = createSharingClient({
           WebSocket: Socket,
           version: "0.1.5",
           name: "Linked browser test",
           capabilities: ["linked-anki-v2"],
           applyBatch: async () => {},
+          onWordStatus: (revision) => wordStatusRevisions.push(revision),
         });
         const ankiUrl = `http://127.0.0.1:${anki.address().port}`;
         let written;
@@ -562,6 +596,17 @@ test(
             request: { term: { expression: "食べる", reading: "たべる" } },
           });
           assert.equal(maturity.mature, false);
+          await until(
+            () => wordStatusRevisions.some(Number.isInteger),
+            "Index row changes were not broadcast",
+          );
+          const wordStatus = await client.forward({
+            target: "hachidori-anki",
+            type: "hd_anki_word_status",
+            request: { headwords: ["食べる", "飲む"] },
+          });
+          assert.equal(wordStatus.ok, true, JSON.stringify(wordStatus));
+          assert.deepEqual(wordStatus.statuses, ["learning", "unknown"]);
           // A reader without linked Anki v2 cannot rewrite Templates.
           const legacy = createSharingClient({
             WebSocket: Socket,
@@ -1179,4 +1224,25 @@ test("drops reader options that Hachidori no longer has from saved state", async
   assert.equal(Object.hasOwn(migrated.experimental, "mediaMining"), false);
   assert.equal(migrated.popupWidthPx, 640);
   assert.equal(migrated.revision, 1);
+});
+
+test("keeps words marked as known or ignored across restarts", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "hachidori-state-test-"));
+  const filename = path.join(directory, "state.json");
+  await createState(directory, () => {}).options({ baseRevision: 0, options: {} });
+  // State written before Hachidori 0.3 has no overrides.
+  const saved = JSON.parse(await readFile(filename, "utf8"));
+  delete saved.wordStatusOverrides;
+  await writeFile(filename, JSON.stringify(saved));
+
+  const store = createState(directory, () => {});
+  await store.validate();
+  assert.deepEqual(await store.wordStatusOverride({ headword: "食べる", status: "known" }), { ok: true, revision: 1 });
+  await store.wordStatusOverride({ headword: "飲む", status: "ignored" });
+  await assert.rejects(store.wordStatusOverride({ headword: "飲む", status: "learning" }));
+
+  const restarted = createState(directory, () => {});
+  await restarted.validate();
+  const { wordStatusOverrides } = restarted.snapshot();
+  assert.deepEqual(wordStatusOverrides, { revision: 2, known: ["食べる"], ignored: ["飲む"] });
 });

@@ -103,6 +103,7 @@ anki.reconcileIndex();
 const engineReads = new Set([
   "hd_lookup",
   "hd_lookup_dictionary",
+  "hd_segment",
   "hd_kanji",
   "hd_media",
   "hd_styles",
@@ -133,7 +134,7 @@ async function readBackupManifest(bytes) {
     );
     if (
       manifest?.format !== "hachidori-backup" ||
-      ![1, 2].includes(manifest.version)
+      ![1, 2, 3].includes(manifest.version)
     )
       throw new Error("The selected archive is not a supported Hachidori backup.");
     // Older backups include the retired external corpus integration.
@@ -299,6 +300,8 @@ async function dispatch(message) {
       ["hd_lookup_stats_read", "hd_lookup_stats_record"].includes(message.type)
     )
       return store.statistics(message);
+    if (message.type === "hd_word_status_override")
+      return store.wordStatusOverride(message);
   }
   throw new Error(
     `Unsupported operation: ${message.target}/${message.type}.`,
@@ -335,10 +338,13 @@ async function respond(id, message) {
 // queue instead of in it; the engine serialises the import transaction itself
 // and lookups keep being answered during the download.
 // Anki requests wait on AnkiConnect and own their own mutation queue, so they
-// run beside the queue too.
+// run beside the queue too. Segmentation takes one engine turn per chunk so
+// lookups run between chunks; holding this queue for the batch would undo that.
 const UNQUEUED = new Set(["hd_updates_check", "hd_updates_install"]);
 function queued(message) {
   if (message?.target === "hachidori-anki") return false;
+  if (message?.target === "hoshidicts-offscreen" && message.type === "hd_segment")
+    return false;
   if (message?.target === "hachidori-updates") return !UNQUEUED.has(message.type);
   return !(message?.target === "hoshidicts-worker" && ANKI_WORKER_TYPES.has(message.type));
 }

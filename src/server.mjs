@@ -162,8 +162,20 @@ const SHARED_KEYS = new Set([
   "customDictionarySource",
   "dictionaryUpdates",
   "lookupStats",
+  "wordStatusOverrides",
 ]);
 const sharedKey = (key) => SHARED_KEYS.has(key) || key.startsWith("lookupStats:");
+// Linked readers re-read word status when the duplicate index's rows change.
+// A Template source change carries no revision: older ones belong to other rows.
+function wordStatusRevision(before, after) {
+  const revision = (value, key) =>
+    value?.version === 1 && Number.isInteger(value[key]) ? value[key] : 0;
+  if (revision(before, "configurationRevision") !== revision(after, "configurationRevision"))
+    return null;
+  if (revision(before, "rowRevision") !== revision(after, "rowRevision"))
+    return revision(after, "rowRevision");
+  return undefined;
+}
 const LINKED_SETTINGS_UPDATE_REQUIRED =
   "Update the linked Hachidori before editing Templates or Custom Buttons.";
 const alarms = new Map();
@@ -239,7 +251,11 @@ worker.on("message", (event) => {
     imports.start();
   } else if (event.kind === "storage") {
     if (snapshot === null) return;
+    const wordStatus = Object.hasOwn(event.changes, "ankiDuplicateIndex")
+      ? wordStatusRevision(snapshot.ankiDuplicateIndex, event.changes.ankiDuplicateIndex)
+      : undefined;
     Object.assign(snapshot, event.changes);
+    if (wordStatus !== undefined) host.wordStatusChanged(wordStatus);
     host.setDictionaries(snapshot.dictionaryState.dictionaries.length);
     host.storageChanged(
       Object.fromEntries(

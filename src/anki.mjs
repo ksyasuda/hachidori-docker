@@ -209,6 +209,8 @@ export function createAnkiHost({ store, engine, document, log }) {
           return service.submitClient(unmask(allowed.request), allowed.clientMedia);
         case "hd_anki_browse":
           return service.browse(unmask(allowed.request));
+        case "hd_anki_word_status":
+          return service.wordStatus(allowed.request);
         default:
           return service.maturity(allowed.request);
       }

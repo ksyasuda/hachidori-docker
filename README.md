@@ -223,11 +223,17 @@ type is configured, the host refreshes its duplicate index every 30 minutes, as
 the browser does. Custom page scripts are the only Anki feature that stays in the
 browser.
 
+Word highlighting in Hachidori 0.3 works the same way: the host segments page
+text with its engine and answers each word's status from its duplicate index.
+Words marked as known or ignored are stored on the host, mirrored to every linked
+browser and kept across restarts. When the index refreshes, linked pages re-read
+the words they show.
+
 ## Supported scope
 
 The host handles lookups, kanji, styles, dictionary images, reloads, dictionary
 presentation changes, removal, personal dictionary edits, reader settings, lookup
-statistics, managed updates and Anki mining for linked browsers. The relay also
+statistics, word highlighting, managed updates and Anki mining for linked browsers. The relay also
 serves dictionary downloads in Hachidori backup format, which you can restore
 through Hachidori's own backup UI. `/ankiFields` renders fields and dictionary
 media with jsdom in Node. The HTTP API doesn't return pronunciation audio.
