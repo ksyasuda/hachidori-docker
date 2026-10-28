@@ -33,3 +33,33 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     stop_grace_period: 30s
+  # Headless AnkiConnect for machines without desktop Anki. Opt in with
+  # COMPOSE_PROFILES=anki in .env; it takes AnkiConnect's port 8765.
+  anki:
+    profiles: [anki]
+    build: ankiconnect
+    image: hachidori-ankiconnect:local
+    container_name: hachidori-ankiconnect
+    init: true
+    restart: unless-stopped
+    # Host networking: the host reaches it at AnkiConnect's default
+    # http://127.0.0.1:8765, as it would reach desktop Anki.
+    network_mode: host
+    environment:
+      ANKICONNECT_BIND: "${ANKICONNECT_BIND:-127.0.0.1}"
+      ANKICONNECT_PORT: "${ANKICONNECT_PORT:-8765}"
+      ANKICONNECT_API_KEY: "${ANKICONNECT_API_KEY:-}"
+      ANKICONNECT_CORS_ORIGINS: "${ANKICONNECT_CORS_ORIGINS:-}"
+      ANKI_SYNC_ENDPOINT: "${ANKI_SYNC_ENDPOINT:-}"
+      ANKI_SYNC_USERNAME: "${ANKI_SYNC_USERNAME:-}"
+      ANKI_SYNC_PASSWORD: "${ANKI_SYNC_PASSWORD:-}"
+      ANKI_SYNC_DELAY: "${ANKI_SYNC_DELAY:-10}"
+      ANKI_SYNC_INTERVAL: "${ANKI_SYNC_INTERVAL:-600}"
+    volumes:
+      - ${ANKI_DATA_PATH:-./anki}:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 30s

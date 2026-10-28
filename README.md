@@ -221,13 +221,78 @@ The container uses host networking, so it reaches AnkiConnect at the default
 `webCorsOriginList` entry because the host sends no browser origin. While a note
 type is configured, the host refreshes its duplicate index every 30 minutes, as
 the browser does. Custom page scripts are the only Anki feature that stays in the
-browser.
+browser. With no desktop Anki on this machine, run the [headless Anki](#headless-anki)
+service.
 
 Word highlighting in Hachidori 0.3 works the same way: the host segments page
 text with its engine and answers each word's status from its duplicate index.
 Words marked as known or ignored are stored on the host, mirrored to every linked
 browser and kept across restarts. When the index refreshes, linked pages re-read
 the words they show.
+
+### Headless Anki
+
+The optional `anki` service answers AnkiConnect at `http://127.0.0.1:8765` from a
+collection in `./anki`. It needs no display, Qt or desktop Anki: it opens the
+collection with Anki's own Python library, pinned to 26.09.3 in
+`ankiconnect/requirements.txt`, and uses about 40 MB of RAM plus the collection. It syncs to an Anki
+sync server, such as a self-hosted `anki --syncserver`, so notes mined here reach
+your other devices.
+
+Turn it on in `.env`, then run `mkdir -p anki && docker compose up -d --build`:
+
+```sh
+COMPOSE_PROFILES=anki
+ANKI_SYNC_ENDPOINT=http://sync.example:8080/
+ANKI_SYNC_USERNAME=you
+ANKI_SYNC_PASSWORD=secret
+```
+
+On first start the service downloads your collection before it accepts requests.
+It then syncs after each write, waiting until `ANKI_SYNC_DELAY` seconds pass with
+no further writes, so a note and its media go in one sync. It also syncs every
+`ANKI_SYNC_INTERVAL` seconds to pick up notes from other devices, and on shutdown
+if a write hasn't synced yet. To sync right away:
+
+```sh
+curl http://127.0.0.1:8765 -d '{"action":"sync","version":6}'
+```
+
+A note type edit or a forced one-way sync on another device makes the server ask
+for a full sync. If every change here has synced, the service downloads on its own.
+Otherwise it keeps the unsynced notes, `/health` returns 503 with the reason and
+the container shows unhealthy until you choose a direction:
+
+```sh
+# "download" discards unsynced changes here; "upload" replaces the server's collection.
+curl http://127.0.0.1:8765 -d '{"action":"fullSync","version":6,"params":{"direction":"download"}}'
+```
+
+An empty sync server also needs `"upload"` once, since the service never uploads
+over the server on its own.
+
+The service implements the AnkiConnect actions Hachidori uses, plus `version`,
+`sync` and `fullSync`. Browse can't open without a window, so **View notes**
+reports an error. Notes take media through `storeMediaFile` with `data`. Inline
+`audio`, `picture` and `video` and file paths or URLs aren't accepted.
+
+| Variable                   | Default     | Meaning                                                      |
+| -------------------------- | ----------- | ------------------------------------------------------------ |
+| `ANKI_SYNC_ENDPOINT`       | empty       | Sync server URL; empty keeps the collection local            |
+| `ANKI_SYNC_USERNAME`       | empty       | Sync server account                                          |
+| `ANKI_SYNC_PASSWORD`       | empty       | Sync server password                                         |
+| `ANKI_SYNC_DELAY`          | `10`        | Seconds after the last write before syncing                  |
+| `ANKI_SYNC_INTERVAL`       | `600`       | Seconds between syncs without writes                         |
+| `ANKICONNECT_BIND`         | `127.0.0.1` | Listener address; `0.0.0.0` for other machines               |
+| `ANKICONNECT_PORT`         | `8765`      | Listener port                                                |
+| `ANKICONNECT_API_KEY`      | empty       | Key every request must carry, as AnkiConnect's `apiKey`      |
+| `ANKICONNECT_CORS_ORIGINS` | empty       | Comma-separated browser origins allowed to call the API      |
+| `ANKI_DATA_PATH`           | `./anki`    | Host folder holding the collection and media                 |
+
+Requests from any other browser origin are refused, so web pages can't write to
+the collection. Before binding beyond loopback, set an API key and enter it in
+Hachidori's Anki settings. Stop the service before backing up `./anki`. Anki's
+library is AGPL-3.0-or-later.
 
 ## Supported scope
 
@@ -320,6 +385,15 @@ duplicate skipping, replacement, bad archives and retries.
 `npm run test:docker` starts the image under a separate Compose project with
 temporary data and import folders. It checks both protocols and the data lock,
 then recreates the container and confirms the data survived.
+
+`test/ankiconnect.test.mjs` runs the headless Anki service against Anki's own sync
+server and mines through the upstream modules the host uses. It needs a Python
+with the service's requirements and skips without one:
+
+```sh
+uv venv /tmp/anki-venv && uv pip install --python /tmp/anki-venv -r ankiconnect/requirements.txt
+ANKI_PYTHON=/tmp/anki-venv/bin/python node --test test/ankiconnect.test.mjs
+```
 
 `scripts/fetch-upstream.py` pins the upstream sources. `NOTICE` lists versions
 and attribution. Rerun the integration tests before changing those pins, and
