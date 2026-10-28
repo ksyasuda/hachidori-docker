@@ -7,7 +7,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1] / ".upstream"
 SOURCES = [
-    ("hachidori", "0a00a389910a078429b1d0e53278d199ce7c260e", "d5de7be9726f384f27f7fcee6e614b0da17bf76983623631bfaec36b96830dfe"),
+    ("hachidori", "5f986e470053d7e5692644e4da79bc70353cae5d", "d3fd77aa7a9d7b6d030f215a202bce4e610ad4983bad968f87657d194cd713a1"),
     ("hachidori-anki", "beffaca1cab2584608a25c276d81b17b0f27088f", "f88a26430ac5ea92fdacfe452b1b895cd67a8b578e39577b096fd666bb4ba27c"),
 ]
 

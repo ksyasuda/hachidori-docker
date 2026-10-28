@@ -5,6 +5,7 @@ import net from "node:net";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Worker } from "node:worker_threads";
 import WebSocket from "ws";
 import { createSharingHost } from "../.upstream/hachidori/extension/sharing-host.js";
@@ -16,11 +17,11 @@ import {
   SHARING_CAPABILITIES,
   allowLinkedImportRequest,
 } from "../.upstream/hachidori/extension/sharing-protocol.js";
-import {
-  ENGINE_BUSY_CODE,
-  createUploadHost,
-} from "../.upstream/hachidori/extension/linked-import.js";
+import { createUploadHost } from "../.upstream/hachidori/extension/linked-import.js";
 import { createImports, MAX_IMPORT_BYTES } from "./imports.mjs";
+
+// The worker refuses host_import with this code while an update cycle runs.
+const ENGINE_BUSY_CODE = "engine-mutating";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = path.resolve(process.env.DATA_DIR ?? path.join(root, "data"));
@@ -68,20 +69,21 @@ const uploads = createUploadHost({
       uploadParts.delete(token);
     },
   },
+  // Senders since Hachidori 0.3.2 do not commit again on a busy reply, so the
+  // commit waits for the import slot and for a running update cycle.
   async importUpload(token, { fileName, replace }) {
-    // A busy slot keeps the upload, so the client commits the same token again.
-    if (imports.busy())
-      return {
-        ok: false,
-        error: "Another import is in progress.",
-        errorCode: ENGINE_BUSY_CODE,
-      };
-    return imports.run(
-      fileName,
-      "link",
-      async () => Buffer.concat(uploadParts.get(token) ?? []),
-      replace ? "replace" : "separate",
-    );
+    for (;;) {
+      while (imports.busy() || updateProgress !== null) await sleep(1000);
+      const reply = await imports.run(
+        fileName,
+        "link",
+        async () => Buffer.concat(uploadParts.get(token) ?? []),
+        replace ? "replace" : "separate",
+      );
+      // An update cycle that began after the wait refuses with this code.
+      if (reply.errorCode !== ENGINE_BUSY_CODE) return reply;
+      await sleep(1000);
+    }
   },
 });
 async function answerUpload(message, clientId) {

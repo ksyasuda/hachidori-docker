@@ -202,7 +202,7 @@ async function dispatch(message) {
       return { ok: true, ...(await updates.install(message)) };
   }
   if (message.type === "host_import") {
-    // The code tells linked uploads to keep their bytes and commit again.
+    // The code tells the linked upload host to wait and import again.
     if (updates.busy())
       throw Object.assign(
         new Error("Dictionary updates are running. Try again when they finish."),

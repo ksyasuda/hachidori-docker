@@ -40,7 +40,7 @@ Linked Hachidori 0.2.3 or later, and apps driving one such as SubMiner, can also
 send a ZIP over the link: Settings on the linked browser shows the drop zone again.
 These uploads replace a dictionary with the same title or update source, or
 install a separate numbered copy when the sender asks for one, and wait while
-another import holds the host.
+another import or a dictionary update holds the host.
 
 Each installed dictionary has a **Remove** button. Removal goes through the
 engine, which deletes the dictionary's files and updates shared state in one

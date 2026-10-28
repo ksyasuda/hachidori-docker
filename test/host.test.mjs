@@ -735,7 +735,7 @@ test(
       );
     };
     await t.test(
-      "a linked client installs, replaces and copies ZIPs over the link and recommits while the slot is busy",
+      "a linked client installs, replaces and copies ZIPs over the link and waits while the slot is busy",
       async () => {
         class Socket extends WebSocket {
           constructor(url) {
@@ -804,16 +804,17 @@ test(
             offset: 0,
             data: Buffer.from(archive).toString("base64"),
           });
-          const busy = await send("hd_import_commit", { token });
-          assert.equal(busy.errorCode, "engine-mutating", JSON.stringify(busy));
+          // The commit waits for the slot instead of answering busy.
+          const committed = send("hd_import_commit", { token });
+          await sleep(1500);
+          assert.equal(
+            (await (await fetch(`${base}/imports`)).json()).active.fileName,
+            "slow.zip",
+          );
           blocker.end();
           await blocked;
-          await until(
-            async () => !(await (await fetch(`${base}/imports`)).json()).active,
-            "Blocking upload did not release the slot",
-          );
-          const retried = await send("hd_import_commit", { token });
-          assert.equal(retried.report?.success, true, JSON.stringify(retried));
+          const reply = await committed;
+          assert.equal(reply.report?.success, true, JSON.stringify(reply));
         } finally {
           client.unlink();
         }
