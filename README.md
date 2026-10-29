@@ -273,7 +273,14 @@ over the server on its own.
 
 The service implements the AnkiConnect actions Hachidori uses, plus `version`,
 `sync` and `fullSync`. Browse can't open without a window, so **View notes**
-reports an error. Notes take media through `storeMediaFile` with `data`. Inline
+reports an error.
+
+GameSentenceMiner can point its Anki URL at this service to update the cards
+Hachidori mines here: set `ANKICONNECT_BIND=0.0.0.0`, reach the port only over a
+private network such as Tailscale, and leave `ANKICONNECT_API_KEY` empty, since
+GameSentenceMiner sends no key. The service answers the actions GameSentenceMiner's
+card updates and stats use, but its setup wizard and Browse shortcuts still need
+desktop Anki. Notes take media through `storeMediaFile` with `data`. Inline
 `audio`, `picture` and `video` and file paths or URLs aren't accepted.
 
 | Variable                   | Default     | Meaning                                                      |

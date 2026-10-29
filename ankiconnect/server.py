@@ -1,6 +1,6 @@
-"""A headless AnkiConnect: the AnkiConnect API v6 actions Hachidori mines with,
-served from a collection opened with Anki's own Python library. No Qt, no
-display and no desktop Anki.
+"""A headless AnkiConnect: the AnkiConnect API v6 actions Hachidori mines with
+and GameSentenceMiner updates cards with, served from a collection opened with
+Anki's own Python library. No Qt, no display and no desktop Anki.
 
 The collection syncs with an Anki sync server at startup, shortly after every
 write, on an interval, and on request, so notes mined here reach every other
@@ -197,7 +197,7 @@ class Syncer:
 
 ACTIONS: dict[str, Callable[..., Any]] = {}
 # Actions after which the collection or its media differ from the server's.
-WRITES = {"addNote", "updateNoteFields", "storeMediaFile", "deleteMediaFile"}
+WRITES = {"addNote", "updateNoteFields", "addTags", "removeTags", "deleteNotes", "storeMediaFile", "deleteMediaFile"}
 
 
 def action(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -448,6 +448,31 @@ class Api:
         self.col.update_note(existing)
 
     @action
+    def addTags(self, notes: list[int], tags: str) -> None:
+        self.col.tags.bulk_add(notes, tags)
+
+    @action
+    def removeTags(self, notes: list[int], tags: str) -> None:
+        self.col.tags.bulk_remove(notes, tags)
+
+    @action
+    def deleteNotes(self, notes: list[int]) -> None:
+        self.col.remove_notes(notes)
+
+    @action
+    def getReviewsOfCards(self, cards: list[int]) -> dict[int, list[dict[str, Any]]]:
+        columns = ("id", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type")
+        return {
+            cid: [
+                dict(zip(columns, row))
+                for row in self.col.db.all(
+                    "select id, usn, ease, ivl, lastIvl, factor, time, type from revlog where cid = ?", cid
+                )
+            ]
+            for cid in cards
+        }
+
+    @action
     def getMediaFilesNames(self, pattern: str = "*") -> list[str]:
         return fnmatch.filter(os.listdir(self.col.media.dir()), pattern)
 
@@ -464,6 +489,12 @@ class Api:
     @action
     def guiBrowse(self, query: str) -> None:
         raise Exception("This Anki runs without a window, so it cannot open Browse. Search for the note in Anki on another device.")
+
+    @action
+    def guiSelectedNotes(self) -> list[int]:
+        # No Browse window, so nothing is selected. GameSentenceMiner asks before
+        # each card update, to move Browse off the note it's about to edit.
+        return []
 
 
 def serve(config: Config) -> None:

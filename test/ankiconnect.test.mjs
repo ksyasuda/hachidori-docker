@@ -141,6 +141,18 @@ test(
     assert.equal(await miner.invoke("updateNoteFields", { note: { id: noteId, fields: { Back: back } } }), null);
     await verifyAnkiFields(miner.invoke, noteId, { Front: "食べる", Back: back });
 
+    // GameSentenceMiner's card update, which follows the note's arrival.
+    assert.deepEqual(await miner.invoke("guiSelectedNotes"), []);
+    assert.equal(await miner.invoke("addTags", { notes: [noteId], tags: "gsm unvoiced" }), null);
+    assert.equal(await miner.invoke("removeTags", { notes: [noteId], tags: "hachidori" }), null);
+    const [info] = await miner.invoke("notesInfo", { notes: [noteId] });
+    assert.deepEqual(info.tags.toSorted(), ["gsm", "unvoiced"]);
+    assert.deepEqual(await miner.invoke("getReviewsOfCards", { cards: info.cards }), { [info.cards[0]]: [] });
+    // Cancelling GameSentenceMiner's review dialog can delete the new note.
+    const cancelled = await miner.invoke("addNote", { note: { ...note, fields: { Front: "消す", Back: "to erase" } } });
+    assert.equal(await miner.invoke("deleteNotes", { notes: [cancelled] }), null);
+    assert.deepEqual(await miner.invoke("findNotes", { query: "Front:消す" }), []);
+
     const source = await ankiIndexSource(config);
     assert.deepEqual(await fetchAnkiIndex(miner.invoke, source), [["食べる", false, [noteId]]]);
 
