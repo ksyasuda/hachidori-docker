@@ -57,6 +57,9 @@ services:
       ANKI_SYNC_INTERVAL: "${ANKI_SYNC_INTERVAL:-600}"
     volumes:
       - ${ANKI_DATA_PATH:-./anki}:/data
+      # Anki starts each day at 4am local time. Without the host's zone that is
+      # 4am UTC, and searches like added:1 disagree with your other devices.
+      - /etc/localtime:/etc/localtime:ro
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777

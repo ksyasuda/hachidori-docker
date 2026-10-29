@@ -248,6 +248,11 @@ ANKI_SYNC_USERNAME=you
 ANKI_SYNC_PASSWORD=secret
 ```
 
+The service uses the host's time zone from `/etc/localtime`, since Anki starts
+each day at 4am local time. Set the host's zone to yours (`timedatectl
+set-timezone`), or `added:1` and other day-based searches will disagree with
+your other devices.
+
 On first start the service downloads your collection before it accepts requests.
 It then syncs after each write, waiting until `ANKI_SYNC_DELAY` seconds pass with
 no further writes, so a note and its media go in one sync. It also syncs every
